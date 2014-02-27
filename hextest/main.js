@@ -14,7 +14,7 @@ var scene = new THREE.Scene();
 
 
 
-	var grassMaterial = new THREE.MeshNormalMaterial({wireframe:true, color:0xffffff});
+	var grassMaterial = new THREE.MeshNormalMaterial({wireframe:false, color:0xffffff});
 
 	var width = 10;
 	var height = 12;
@@ -143,6 +143,7 @@ var scene = new THREE.Scene();
 
 	function makeHexagon (position) {
 
+		var centerCoord = indexToWorldCoordinate(position);
 
 		for (var direction=0; direction<6; ++direction) {
 
@@ -160,10 +161,6 @@ var scene = new THREE.Scene();
 			a = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(indexToWorldCoordinate(neighborCCW)).divideScalar(3);
 			b = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(indexToWorldCoordinate(neighborCW )).divideScalar(3);
 		
-			terrain.vertices.push(centerCoord);
-			terrain.vertices.push(          b);
-			terrain.vertices.push(          a);
-
 			// // Make a sharp step where the slope is too steep.
 			// var heightAboveNeighbor = heights[neighbour] - heights[position]
 			// if (Math.abs(heightAboveNeighbor) > 1) {
@@ -177,9 +174,9 @@ var scene = new THREE.Scene();
 			// 	}
 			// }
 
-			centerCoord.applyMatrix4(blenderStyleToRightHanded);
-			          a.applyMatrix4(blenderStyleToRightHanded);
-			          b.applyMatrix4(blenderStyleToRightHanded);
+			terrain.vertices.push(centerCoord.clone().applyMatrix4(blenderStyleToRightHanded));
+			terrain.vertices.push(                  b.applyMatrix4(blenderStyleToRightHanded));
+			terrain.vertices.push(                  a.applyMatrix4(blenderStyleToRightHanded));
 
 			terrain.faces.push(new THREE.Face3(
 				vertexIndexStart + 0,
