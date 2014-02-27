@@ -29,7 +29,7 @@ var scene = new THREE.Scene();
 		0,0,0,2,5,4,2,0,0,0,
 		 0,0,0,3,3,3,0,0,0,0,
 		0,0,0,0,0,0,0,5,4,0,
-		 0,0,0,0,0,5,5,4,2,0,
+		 0,0,0,0,10,5,5,4,2,0,
 		0,0,0,0,0,1,2,3,3,0,
 		 0,0,0,0,0,0,0,0,0,0
 	];
@@ -128,106 +128,79 @@ var scene = new THREE.Scene();
 
 		coord.x *= 2*triangleHalfWidth;
 
+		coord.z = heights[position] * 0.2;
+
 		coord.x -= width/2;
 		coord.y -= height/2;
 
-		return coord;
+		return new THREE.Vector3(coord.x, coord.y, coord.z);
 	}
 
 
 	var blenderStyleToRightHanded = new THREE.Matrix4().makeRotationX(Math.PI/2).multiply(new THREE.Matrix4().makeScale(1, 1, -1));
 
-	function makeWingedEdge (position, direction) {
-
-		var forward       = movePosition(position, direction);
-		var neighborLeft  = movePosition(position, offsetDirectionByRelativeDirection(direction, -1));
-		var neighborRight = movePosition(position, offsetDirectionByRelativeDirection(direction, +1));
-
-		var positionCoord      = new THREE.Vector3().copy(indexToWorldCoordinate(position     )).setZ(heights[position     ] *.2);
-		var forwardCoord       = new THREE.Vector3().copy(indexToWorldCoordinate(forward      )).setZ(heights[forward      ] *.2);
-		var neighborLeftCoord  = new THREE.Vector3().copy(indexToWorldCoordinate(neighborLeft )).setZ(heights[neighborLeft ] *.2);
-		var neighborRightCoord = new THREE.Vector3().copy(indexToWorldCoordinate(neighborRight)).setZ(heights[neighborRight] *.2);
-
-		var a = new THREE.Vector3().add(positionCoord).add(forwardCoord).add(neighborLeftCoord ).divideScalar(3);
-		var b = new THREE.Vector3().add(positionCoord).add(forwardCoord).add(neighborRightCoord).divideScalar(3);
-
-		positionCoord.applyMatrix4(blenderStyleToRightHanded);
-		 forwardCoord.applyMatrix4(blenderStyleToRightHanded);
-		            a.applyMatrix4(blenderStyleToRightHanded);
-		            b.applyMatrix4(blenderStyleToRightHanded);
-
-		var vertexIndexStart;
-
-		vertexIndexStart = terrain.vertices.length;
-
-		terrain.vertices.push(positionCoord);
-		terrain.vertices.push(            b);
-		terrain.vertices.push(            a);
-
-		terrain.faces.push(new THREE.Face3(
-			vertexIndexStart + 0,
-			vertexIndexStart + 1,
-			vertexIndexStart + 2
-		));
 
 
-//		vertexIndexStart = terrain.vertices.length;
+	function makeHexagon (position) {
 
-		// terrain.vertices.push(            a);
-		// terrain.vertices.push(            b);
-		terrain.vertices.push( forwardCoord);
 
-		terrain.faces.push(new THREE.Face3(
-			vertexIndexStart + 2,
-			vertexIndexStart + 1,
-			vertexIndexStart + 3
-			// vertexIndexStart + 0,
-			// vertexIndexStart + 1,
-			// vertexIndexStart + 2
-		));
+		for (var direction=0; direction<6; ++direction) {
+
+			var centerCoord = indexToWorldCoordinate(position);
+
+			var neighbour = movePosition(position, direction);
+			var neighborCCW  = movePosition(position, offsetDirectionByRelativeDirection(direction, -1));
+			var neighborCW   = movePosition(position, offsetDirectionByRelativeDirection(direction, +1));
+
+			var neighborCoord = indexToWorldCoordinate(neighbour);
+			var vertexIndexStart = terrain.vertices.length;
+			var a, b;
+
+			// Just connect to the neighbor with a smooth slope.
+			a = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(indexToWorldCoordinate(neighborCCW)).divideScalar(3);
+			b = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(indexToWorldCoordinate(neighborCW )).divideScalar(3);
+		
+			terrain.vertices.push(centerCoord);
+			terrain.vertices.push(          b);
+			terrain.vertices.push(          a);
+
+			// // Make a sharp step where the slope is too steep.
+			// var heightAboveNeighbor = heights[neighbour] - heights[position]
+			// if (Math.abs(heightAboveNeighbor) > 1) {
+
+			// 	a.setZ(centerCoord.z);
+			// 	b.setZ(centerCoord.z);
+
+			// 	if (heightAboveNeighbor < 0) {
+
+			// 		// The higher side adds the vertical filler.
+			// 	}
+			// }
+
+			centerCoord.applyMatrix4(blenderStyleToRightHanded);
+			          a.applyMatrix4(blenderStyleToRightHanded);
+			          b.applyMatrix4(blenderStyleToRightHanded);
+
+			terrain.faces.push(new THREE.Face3(
+				vertexIndexStart + 0,
+				vertexIndexStart + 1,
+				vertexIndexStart + 2
+			));
+		}
 	}
-
 
 	var terrain = new THREE.Geometry();
 
-	// for (var i = 0; i < heights.length; i++) {
-	// for (var i = 0; i < 1; i++) {
-
+	// For all map cells.
 	for (var x = 1; x < width-1; x++) {
-		// for (var y = 1; y < 2; y++) {
 		for (var y = 1; y < height-1; y++) {
 
-			var i = coordinateToIndex(x, y);
-
-			makeWingedEdge(i, Directions.indexOf("right"));
-			makeWingedEdge(i, Directions.indexOf("downRight"));
-			makeWingedEdge(i, Directions.indexOf("downLeft"));
-
-			// if (coord.x == 0) {
-			// 	makeWingedEdge(i, "left");
-			// };
-			// if (coord.y == 0) {
-			// 	makeWingedEdge(i, "upLeft");
-			// 	makeWingedEdge(i, "up");
-			// };
+			makeHexagon(coordinateToIndex(x, y));
 		}
 	};
 
 
 
-	// terrain.vertices = [
-	// 	new THREE.Vector3(-triangleHalfWidth, 0, -1),
-	// 	new THREE.Vector3(0, 0, 0),
-	// 	new THREE.Vector3(triangleHalfWidth, 0, -1)
-	// ];
-	// terrain.normals = [
-	// 	new THREE.Vector3(0, 1, 0),
-	// 	new THREE.Vector3(0, 1, 0),
-	// 	new THREE.Vector3(0, 1, 0)
-	// ];
-	// terrain.faces = [
-	// 	new THREE.Face3(0, 1, 2)
-	// ];
 	terrain.computeBoundingSphere();
 	terrain.computeFaceNormals();
 
@@ -256,22 +229,17 @@ scene.add(pointLight);
 
 
 
-var sceneViews = [];
-var containers = $('.scene-view');
-for (var i = 0; i < 2; ++i){//containers.length; i++) {
 
-	var renderer = new THREE.WebGLRenderer();
-	renderer.setClearColorHex(0x000000, 1);
+var renderer = new THREE.WebGLRenderer();
+renderer.setClearColorHex(0x000000, 1);
 
-	containers.eq(i).append(renderer.domElement);
+$('.scene-view').append(renderer.domElement);
 
-	var sceneView = new SceneView({
-		renderer: renderer,
-		scene: scene
-	});
+var sceneView = new SceneView({
+	renderer: renderer,
+	scene: scene
+});
 
-	sceneViews.push(sceneView);
-};
 
 
 
