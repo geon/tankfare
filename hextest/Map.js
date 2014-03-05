@@ -6,7 +6,7 @@ function Map () {
 
 	this.heights = [
 		0,0,0,0,0,0,0,0,0,0,
-		 0,0,0,0,0,0,0,0,0,0,
+		 0,0,1,2,3,4,5,0,0,0,
 		0,0,0,0,0,0,0,0,0,0,
 		 0,0,0,0,0,0,0,0,0,0,
 		0,0,0,0,2,2,0,0,0,0,
@@ -18,6 +18,93 @@ function Map () {
 		0,0,0,0,0,1,2,3,3,0,
 		 0,0,0,0,0,0,0,0,0,0
 	];
+
+	this.cells = [];
+	for (var i = 0; i < this.heights.length; ++i) {
+
+		this.cells[i] = {
+			height: this.heights[i],
+			centerCoord: this.indexToWorldCoordinate(i),
+			corners: []
+		};
+	}
+
+	for (var i = 0; i < this.cells.length; ++i) {
+
+		var currentCell = this.cells[i];
+
+		for (var direction=0; direction<6; ++direction) {
+
+			var currentCorner = currentCell.corners[direction];
+
+			var surroundingCells = [
+				currentCell,
+				this.cells[this.movePosition(i, direction)],
+				this.cells[this.movePosition(i, Map.offsetDirectionByRelativeDirection(direction, 1))],
+			];
+
+			surroundingCells[0].activeCornerIndex = direction;
+			surroundingCells[1].activeCornerIndex = Map.offsetDirectionByRelativeDirection(direction, 2);
+			surroundingCells[2].activeCornerIndex = Map.offsetDirectionByRelativeDirection(direction, 4);
+
+
+			// Sort by height.
+			surroundingCells.sort(function(a, b){return a.height - b.height;});
+
+
+			var vertex = new THREE.Vector3()
+				.add(surroundingCells[0].centerCoord)
+				.add(surroundingCells[1].centerCoord)
+				.add(surroundingCells[2].centerCoord)
+				.divideScalar(3)
+			;
+
+			// Check for cells sharing a vertex.
+			if ((Math.abs(surroundingCells[0].height - surroundingCells[1].height) <= 1) && (Math.abs(surroundingCells[1].height - surroundingCells[2].height) <= 1)) {
+
+				//share 012
+
+				surroundingCells[0].corners[surroundingCells[0].activeCornerIndex] =
+				surroundingCells[1].corners[surroundingCells[1].activeCornerIndex] =
+				surroundingCells[2].corners[surroundingCells[2].activeCornerIndex] = vertex;
+
+			} else if (Math.abs(surroundingCells[0].height - surroundingCells[1].height) <= 1) {
+
+				// Share 01
+
+				vertex.setZ((surroundingCells[0].centerCoord.z + surroundingCells[1].centerCoord.z) / 2);
+
+				surroundingCells[0].corners[surroundingCells[0].activeCornerIndex] =
+				surroundingCells[1].corners[surroundingCells[1].activeCornerIndex] = vertex;
+
+				surroundingCells[2].corners[surroundingCells[2].activeCornerIndex] = vertex.clone().setZ(surroundingCells[2].centerCoord.z);
+
+			} else if (Math.abs(surroundingCells[1].height - surroundingCells[2].height) <= 1) {
+			
+				// Share 12
+
+				vertex.setZ((surroundingCells[1].centerCoord.z + surroundingCells[2].centerCoord.z) / 2);
+
+				surroundingCells[1].corners[surroundingCells[1].activeCornerIndex] =
+				surroundingCells[2].corners[surroundingCells[2].activeCornerIndex] = vertex;
+
+				surroundingCells[0].corners[surroundingCells[0].activeCornerIndex] = vertex.clone().setZ(surroundingCells[0].centerCoord.z);
+
+			} else {
+
+				// No sharing
+
+				surroundingCells[0].corners[surroundingCells[0].activeCornerIndex] = vertex.clone().setZ(surroundingCells[0].centerCoord.z);
+				surroundingCells[1].corners[surroundingCells[1].activeCornerIndex] = vertex.clone().setZ(surroundingCells[1].centerCoord.z);
+				surroundingCells[2].corners[surroundingCells[2].activeCornerIndex] = vertex.clone().setZ(surroundingCells[2].centerCoord.z);
+			}
+		}
+	}
+
+	for (var i = 0; i < this.cells.length; ++i) {
+
+		delete this.cells[i].activeCornerIndex;
+	}
 
 
 };
@@ -53,40 +140,18 @@ Map.prototype.makeGeometry = function () {
 
 Map.prototype.makeHexagon = function (position, terrain) {
 
-	var centerCoord = this.indexToWorldCoordinate(position);
-
+	var cell = this.cells[position];
+	var centerCoord = cell.centerCoord;
 	for (var direction=0; direction<6; ++direction) {
 
-		var centerCoord = this.indexToWorldCoordinate(position);
+		var a = cell.corners[direction];
+		var b = cell.corners[Map.offsetDirectionByRelativeDirection(direction, 1)];
 
-		var neighbour = this.movePosition(position, direction);
-		var neighborCCW  = this.movePosition(position, Map.offsetDirectionByRelativeDirection(direction, -1));
-		var neighborCW   = this.movePosition(position, Map.offsetDirectionByRelativeDirection(direction, +1));
-
-		var neighborCoord = this.indexToWorldCoordinate(neighbour);
 		var vertexIndexStart = terrain.vertices.length;
-		var a, b;
-
-		// Just connect to the neighbor with a smooth slope.
-		a = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(this.indexToWorldCoordinate(neighborCCW)).divideScalar(3);
-		b = new THREE.Vector3().add(centerCoord).add(neighborCoord).add(this.indexToWorldCoordinate(neighborCW )).divideScalar(3);
-	
-		// // Make a sharp step where the slope is too steep.
-		// var heightAboveNeighbor = heights[neighbour] - heights[position]
-		// if (Math.abs(heightAboveNeighbor) > 1) {
-
-		// 	a.setZ(centerCoord.z);
-		// 	b.setZ(centerCoord.z);
-
-		// 	if (heightAboveNeighbor < 0) {
-
-		// 		// The higher side adds the vertical filler.
-		// 	}
-		// }
 
 		terrain.vertices.push(centerCoord.clone().applyMatrix4(Map.blenderStyleToRightHanded));
-		terrain.vertices.push(                  b.applyMatrix4(Map.blenderStyleToRightHanded));
-		terrain.vertices.push(                  a.applyMatrix4(Map.blenderStyleToRightHanded));
+		terrain.vertices.push(          b.clone().applyMatrix4(Map.blenderStyleToRightHanded));
+		terrain.vertices.push(          a.clone().applyMatrix4(Map.blenderStyleToRightHanded));
 
 		terrain.faces.push(new THREE.Face3(
 			vertexIndexStart + 0,
