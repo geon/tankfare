@@ -125,7 +125,7 @@ SceneView.prototype.setCameraOrientationFromPolarCoords = function (polarCoords)
 		new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0 ), -polarCoords.y)
 	);
 
-	this.camera.position = new THREE.Vector3(0, 0, 15).applyQuaternion(orientation);
+	this.camera.position = new THREE.Vector3(0, 0, 30).applyQuaternion(orientation);
 	this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 }
 
