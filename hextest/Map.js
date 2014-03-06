@@ -163,13 +163,12 @@ Map.prototype.makeHexagon = function (position, terrain) {
 
 		var vertexIndexStart = terrain.vertices.length;
 
+
+		// Top
+
 		terrain.vertices.push(centerCoord.clone().applyMatrix4(Map.blenderStyleToRightHanded));
 		terrain.vertices.push(          b.clone().lerp(centerCoord, 2 * bevelDepth).applyMatrix4(Map.blenderStyleToRightHanded));
 		terrain.vertices.push(          a.clone().lerp(centerCoord, 2 * bevelDepth).applyMatrix4(Map.blenderStyleToRightHanded));
-
-		var bevelDown = new THREE.Vector3(0, 0, -bevelDepth);
-		terrain.vertices.push(          b.clone().add(bevelDown).applyMatrix4(Map.blenderStyleToRightHanded));
-		terrain.vertices.push(          a.clone().add(bevelDown).applyMatrix4(Map.blenderStyleToRightHanded));
 
 		terrain.faces.push(new THREE.Face3(
 			vertexIndexStart + 0,
@@ -177,6 +176,13 @@ Map.prototype.makeHexagon = function (position, terrain) {
 			vertexIndexStart + 2
 		));
 
+
+		// Bevel
+
+		var bevelDown = new THREE.Vector3(0, 0, -bevelDepth);
+		terrain.vertices.push(          b.clone().add(bevelDown).applyMatrix4(Map.blenderStyleToRightHanded));
+		terrain.vertices.push(          a.clone().add(bevelDown).applyMatrix4(Map.blenderStyleToRightHanded));
+
 		terrain.faces.push(new THREE.Face3(
 			vertexIndexStart + 1,
 			vertexIndexStart + 3,
@@ -184,10 +190,26 @@ Map.prototype.makeHexagon = function (position, terrain) {
 		));
 		terrain.faces.push(new THREE.Face3(
 			vertexIndexStart + 3,
-				vertexIndexStart + 4,
+			vertexIndexStart + 4,
 			vertexIndexStart + 2
 		));
 
+
+		// Sides
+
+		terrain.vertices.push(          b.clone().setZ(-bevelDepth).applyMatrix4(Map.blenderStyleToRightHanded));
+		terrain.vertices.push(          a.clone().setZ(-bevelDepth).applyMatrix4(Map.blenderStyleToRightHanded));
+
+		terrain.faces.push(new THREE.Face3(
+			vertexIndexStart + 3,
+			vertexIndexStart + 5,
+			vertexIndexStart + 4
+		));
+		terrain.faces.push(new THREE.Face3(
+			vertexIndexStart + 5,
+			vertexIndexStart + 6,
+			vertexIndexStart + 4
+		));
 	}
 }
 
