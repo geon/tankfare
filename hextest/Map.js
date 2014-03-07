@@ -3,19 +3,95 @@ var Map;
 
 Map = function () {
 
+	this.cells = [];
 
 	this.generateMap();
-	//this.loadTestLevel();
+	// this.loadTestLevel();
+};
 
 
-	this.cells = [];
-	for (var i = 0; i < this.heights.length; ++i) {
+Map.prototype.generateMap = function () {
+
+	this.width = 20;
+	this.height = 20;
+
+
+
+	for (var i = 0; i < this.width*this.width; ++i) {
+
+		var coord = this.indexToCoordinate(i);
+		coord = new THREE.Vector2(coord.x, coord.y);
+
+		var centrish = 1 - Math.min(1, coord.distanceTo(new THREE.Vector2(this.width/2, this.height/2)) / Math.min(this.width/2, this.height/2));
+
+		var baseHeight = 15 * Math.pow(centrish, 2);
+
 
 		this.cells[i] = {
-			height: this.heights[i],
-			centerCoord: this.indexToWorldCoordinate(i),
-			corners: []
+			height: baseHeight + Math.random() * 8 * Math.pow(centrish, 1/1.8)
 		};
+	}
+
+
+	// Blur
+	for (var i = 0; i < this.cells.length; ++i) {
+		for (var direction=0; direction<6; ++direction) {
+
+			this.cells[i].height += this.cells[this.movePosition(i, direction)].height/6;
+		}
+
+		this.cells[i].height /= 2;
+	}
+
+
+	for (var i = 0; i < this.cells.length; ++i) {
+		this.cells[i].height = Math.round(this.cells[i].height);
+	}
+};
+
+Map.prototype.loadTestLevel = function () {
+
+	this.width = 10;
+	this.height = 10;
+
+	var self = this;
+
+	$.each([
+		0,0,0,0,0,0,0,0,0,0,
+		 0,0,0,0,0,0,0,0,0,0,
+		0,0,1,2,0,0,0,0,0,0,
+		 0,0,0,0,0,0,1,2,0,0,
+		0,0,0,0,0,0,2,0,1,0,
+		 0,0,0,0,0,0,0,0,0,0,
+		0,0,0,1,2,3,0,0,2,0,
+		 0,0,1,2,3,0,0,3,0,0,
+		0,0,0,0,0,0,1,0,2,0,
+		 0,0,0,1,0,0,0,0,0,0
+	], function(i){
+
+		self.cells[i] = {height: this};
+	})
+};
+
+
+Map.blenderStyleToRightHanded = new THREE.Matrix4().makeRotationX(Math.PI/2).multiply(new THREE.Matrix4().makeScale(1, 1, -1));
+Map.triangleHalfWidth = Math.tan(30/360*2*Math.PI);
+Map.Directions = [
+	"left",
+	"upLeft",
+	"upRight",
+	"right",
+	"downRight",
+	"downLeft"
+];
+
+
+Map.prototype.makeGeometry = function () {
+
+	for (var i = 0; i < this.cells.length; ++i) {
+
+		this.cells[i].corners = [];
+		this.cells[i].centerCoord = this.indexToWorldCoordinate(i);
 	}
 
 	for (var i = 0; i < this.cells.length; ++i) {
@@ -90,87 +166,6 @@ Map = function () {
 		}
 	}
 
-	for (var i = 0; i < this.cells.length; ++i) {
-
-		delete this.cells[i].activeCornerIndex;
-	}
-
-
-};
-
-
-Map.prototype.generateMap = function () {
-
-	this.width = 20;
-	this.height = 20;
-
-	this.heights = [];
-
-
-	for (var i = 0; i < this.width*this.width; ++i) {
-
-		var coord = this.indexToCoordinate(i);
-		coord = new THREE.Vector2(coord.x, coord.y);
-
-		var centrish = 1 - Math.min(1, coord.distanceTo(new THREE.Vector2(this.width/2, this.height/2)) / Math.min(this.width/2, this.height/2));
-
-		var baseHeight = 15 * Math.pow(centrish, 2);
-
-
-		this.heights[i] = baseHeight + Math.random() * 8 * Math.pow(centrish, 1/1.8);
-	}
-
-
-	// Blur
-	for (var i = 0; i < this.heights.length; ++i) {
-		for (var direction=0; direction<6; ++direction) {
-
-			this.heights[i] += this.heights[this.movePosition(i, direction)]/6;
-		}
-
-		this.heights[i] /= 2;
-	}
-
-
-	for (var i = 0; i < this.heights.length; ++i) {
-		this.heights[i] = Math.round(this.heights[i]);
-	}
-};
-
-Map.prototype.loadTestLevel = function () {
-
-	this.width = 10;
-	this.height = 10;
-
-	this.heights = [
-		0,0,0,0,0,0,0,0,0,0,
-		 0,0,0,0,0,0,0,0,0,0,
-		0,0,1,2,0,0,0,0,0,0,
-		 0,0,0,0,0,0,1,2,0,0,
-		0,0,0,0,0,0,2,0,1,0,
-		 0,0,0,0,0,0,0,0,0,0,
-		0,0,0,1,2,3,0,0,2,0,
-		 0,0,1,2,3,0,0,3,0,0,
-		0,0,0,0,0,0,1,0,2,0,
-		 0,0,0,1,0,0,0,0,0,0
-	];
-};
-
-
-Map.blenderStyleToRightHanded = new THREE.Matrix4().makeRotationX(Math.PI/2).multiply(new THREE.Matrix4().makeScale(1, 1, -1));
-Map.triangleHalfWidth = Math.tan(30/360*2*Math.PI);
-Map.Directions = [
-	"left",
-	"upLeft",
-	"upRight",
-	"right",
-	"downRight",
-	"downLeft"
-];
-
-
-Map.prototype.makeGeometry = function () {
-
 	var terrain = new THREE.Geometry();
 
 	// For all map cells.
@@ -180,6 +175,12 @@ Map.prototype.makeGeometry = function () {
 			this.makeHexagon(this.coordinateToIndex(x, y), terrain);
 		}
 	};
+
+	for (var i = 0; i < this.cells.length; ++i) {
+
+		delete this.cells[i].activeCornerIndex;
+		delete this.cells[i].corners;
+	}
 
 	return terrain;
 };
@@ -336,7 +337,7 @@ Map.prototype.indexToWorldCoordinate = function  (position) {
 
 	coord.x *= 2*Map.triangleHalfWidth;
 
-	coord.z = this.heights[position] * 0.2;
+	coord.z = this.cells[position].height * 0.2;
 
 	coord.x -= this.width/2;
 	coord.y -= this.height/2;
