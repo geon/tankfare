@@ -117,8 +117,20 @@ Map.prototype.generateMap = function () {
 		var baseHeight = 15 * Math.pow(centrish, 2);
 
 
-		this.heights[i] = baseHeight + Math.random() * 5 * centrish;
+		this.heights[i] = baseHeight + Math.random() * 8 * Math.pow(centrish, 1/1.8);
 	}
+
+
+	// Blur
+	for (var i = 0; i < this.heights.length; ++i) {
+		for (var direction=0; direction<6; ++direction) {
+
+			this.heights[i] += this.heights[this.movePosition(i, direction)]/6;
+		}
+
+		this.heights[i] /= 2;
+	}
+
 
 	for (var i = 0; i < this.heights.length; ++i) {
 		this.heights[i] = Math.round(this.heights[i]);
